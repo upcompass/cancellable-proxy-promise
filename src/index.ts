@@ -1,57 +1,59 @@
+import uuidv1 = require('uuid/v1')
 
-const util = require('util')
-let pendingExecutions = 0
-let refs = 0
+export const PromiseContext = {
+  cancelled: false,
+  refs: 0
+}
 
-var handler = {
-    construct: function(target, argumentList, newTarget) {
-        refs++
-        const [executor] = argumentList
-        const pre = (resolve, reject) => {
-            pendingExecutions++
-            return executor(resolve, reject)
+export class CancelledPromiseError extends Error {
+  constructor(message: string) {
+    super(message)
+    Object.setPrototypeOf(this, CancelledPromiseError.prototype)
+  }
+}
+
+const handler = {
+  construct: (target, argumentList, newTarget) => {
+    PromiseContext.refs++
+    const id = uuidv1()
+    const [executor] = argumentList
+
+    const instance = Object.assign(
+      new Proxy(new target(executor), {
+        get: (target, property) => {
+          if (PromiseContext.cancelled) {
+            PromiseContext.refs--
+            throw new CancelledPromiseError(id)
+          }
+          return (
+            target[property] &&
+            target[property].bind &&
+            target[property].bind(target)
+          )
         }
-        // executor(()=> console.log('0'), ()=> console.log('1'))
-        const instance = new target(pre)
-        instance.then(() => {
-            refs--
-            pendingExecutions--
-        })
-        instance.catch(() => {
-            refs--
-            pendingExecutions--
-        })
-        return instance
-    }
-};
+      }),
+      {
+        cancel: () => {
+          PromiseContext.cancelled = true
+        }
+      }
+    )
 
-const prom = new Proxy(Promise, handler)
+    instance.then((...args) => {
+      PromiseContext.refs--
+      if (PromiseContext.cancelled) {
+        console.log(`Cancelling promise ${id} ${args}`)
+        throw new CancelledPromiseError(id)
+      }
+    })
 
-const promise = new prom((resolve, reject) => {
-    console.log('123')
-    resolve(123);
-});
+    instance.catch(error => {
+      PromiseContext.refs--
+      throw error
+    })
 
-;(async () => {
-    const promises = []
-    let st
-    const timeout = () => {
-        console.log(`Unresolved refs: ${refs}`)
-        console.log(`Pending promises: ${pendingExecutions}`)
-        st = setTimeout(timeout, 1000)
-    } 
+    return instance
+  }
+}
 
-    setTimeout(timeout, 1000)
-    for(let i=0; i<10; i++){
-        promises.push(new prom((resolve, reject) => {
-            setTimeout(() => {
-                console.log(`Resolving ${i}`)
-                resolve()
-            }, 1000 * i)
-        }))
-    }
-    await Promise.all(promises)
-    clearTimeout(st)
-})()
-
-console.log(refs)
+export const promise: () => void = new Proxy(global.Promise, handler)

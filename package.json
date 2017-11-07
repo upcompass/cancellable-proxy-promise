@@ -1,10 +1,51 @@
 {
-  "name": "test",
+  "name": "cancellable-proxy-promise",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": "nelak@e107.com.ar",
   "license": "MIT",
+  "scripts": {
+    "precommit": "lint-staged",
+    "prepare": "taskr",
+    "test": "jest"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "prettier --no-semi --single-quote --write",
+      "git add"
+    ]
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.tsx?$": "<rootDir>/node_modules/ts-jest/preprocessor.js"
+    },
+    "testRegex": "(/__tests__/.*|\\.(test|spec))\\.(tsx?|jsx?)$",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "json",
+      "jsx"
+    ]
+  },
   "dependencies": {
-    "@types/node": "^8.0.47",
-    "vm2": "^3.5.2"
+    "uuid": "^3.1.0"
+  },
+  "devDependencies": {
+    "@taskr/clear": "^1.1.0",
+    "@taskr/esnext": "^1.1.0",
+    "@taskr/shell": "^1.1.0",
+    "@types/jest": "^21.1.5",
+    "@types/node": "^8.0.49",
+    "husky": "^0.14.3",
+    "jest": "^21.2.1",
+    "lint-staged": "^4.3.0",
+    "prettier": "^1.8.1",
+    "taskr": "^1.1.0",
+    "ts-jest": "^21.2.1",
+    "tslint": "^5.8.0",
+    "tslint-config-prettier": "^1.6.0",
+    "typescript": "^2.6.1"
   }
 }

@@ -18,7 +18,7 @@ const asynchronous = async () => {
   console.log('Async execution')
 }
 
-const cancellablePromise = asynchronous() as any
+const cancellablePromise = asynchronous()
 
 cancellablePromise.then(result => {
   // Promise is eagerly evaluated and can't be stopped

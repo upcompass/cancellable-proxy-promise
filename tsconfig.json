@@ -15,7 +15,7 @@
         "outDir": "dist",
         "alwaysStrict": true,
         "sourceMap": true,
-        "target": "es6",
+        "target": "es2017",
         "lib": [
             "esnext"
         ]

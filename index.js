@@ -1,11 +1,12 @@
-import uuidv1 = require('uuid/v1')
+'use strict'
+const uuidv1 = require('uuid/v1')
 
-export const PromiseContext = {
+const PromiseContext = {
   refs: 0
 }
 
-export class CancelledPromiseError extends Error {
-  constructor(message: string) {
+class CancelledPromiseError extends Error {
+  constructor(message) {
     super(message)
     Object.setPrototypeOf(this, CancelledPromiseError.prototype)
   }
@@ -14,17 +15,17 @@ export class CancelledPromiseError extends Error {
 const handler = {
   construct: (target, argumentList, newTarget) => {
     PromiseContext.refs++
-    const [executor, id = uuidv1()] = argumentList
-    PromiseContext[id] = {
+      const [executor, id = uuidv1()] = argumentList
+    PromiseContext[id] = PromiseContext[id] || {
       cancelled: false
     }
 
     const instance = Object.assign(
-      new Proxy(new target(executor), {
+      new Proxy(Object.assign(new target(executor), id), {
         get: (target, property) => {
           if (PromiseContext[id].cancelled) {
             PromiseContext.refs--
-            throw new CancelledPromiseError(id)
+              throw new CancelledPromiseError(id)
           }
           return (
             target[property] &&
@@ -32,8 +33,7 @@ const handler = {
             target[property].bind(target)
           )
         }
-      }),
-      {
+      }), {
         cancel: () => {
           PromiseContext[id].cancelled = true
         },
@@ -43,19 +43,25 @@ const handler = {
 
     instance.then((...args) => {
       PromiseContext.refs--
-      if (PromiseContext[instance.id].cancelled) {
-        console.log(`Cancelling promise ${instance.id} ${args}`)
-        throw new CancelledPromiseError(id)
-      }
+        if (PromiseContext[id].cancelled) {
+          // console.log(`Cancelling promise ${id} ${args}`)
+          throw new CancelledPromiseError(id)
+        }
     })
 
     instance.catch(error => {
       PromiseContext.refs--
-      throw error
+        throw error
     })
 
     return instance
   }
 }
 
-export const promise: () => void = new Proxy(global.Promise, handler)
+const promise = new Proxy(global.Promise, handler)
+
+module.exports = {
+  promise,
+  PromiseContext,
+  CancelledPromiseError
+}
